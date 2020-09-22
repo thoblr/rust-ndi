@@ -72,3 +72,26 @@ fn main() {
         println!("cargo:rustc-link-lib=ndi");
     }
 }
+
+#[cfg(target_os = "macos") ]
+fn main() {
+    let source_dir = choose_source_dir();
+    // Copy the .dylib files to the deps folder, to make it build
+    if let Some(path) = source_dir {
+        let source_path = Path::new(&path);
+        let dest_path = Path::new(&env::var("OUT_DIR").unwrap()).join("../../../deps");
+        fs::copy(source_path.join("libndi.4.dylib"), dest_path.join("libndi.4.dylib")).expect("copy libndi.4.dylib");
+
+        let sl_res = std::os::unix::fs::symlink(Path::new("libndi.4.dylib"), dest_path.join("libndi.dylib"));
+        if let Err(e) = sl_res {
+            if e.kind() != ErrorKind::AlreadyExists {
+                panic!("Unknown error: {}", e);
+            }
+        }
+    }
+
+    if cfg!(not(feature = "dynamic-link")) {
+        // Static link against it
+        println!("cargo:rustc-link-lib=ndi");
+    }
+}
